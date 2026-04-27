@@ -7,6 +7,10 @@ import com.example.cine.service.PeliculaService;
 
 import java.util.List;
 
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.CollectionModel;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
 @RestController
 @RequestMapping("/peliculas")
 public class PeliculaController {
@@ -18,13 +22,32 @@ public class PeliculaController {
     }
 
     @GetMapping
-    public List<Pelicula> obtenerPeliculas() {
-        return peliculaService.obtenerTodas();
+    public CollectionModel<EntityModel<Pelicula>> obtenerPeliculas() {
+
+        List<EntityModel<Pelicula>> peliculas = peliculaService.obtenerTodas()
+                .stream()
+                .map(p -> EntityModel.of(p,
+                        linkTo(methodOn(PeliculaController.class).obtenerPeliculaPorId(p.getId())).withSelfRel(),
+                        linkTo(methodOn(PeliculaController.class).obtenerPeliculas()).withRel("peliculas")
+                ))
+                .toList();
+
+        return CollectionModel.of(peliculas,
+                linkTo(methodOn(PeliculaController.class).obtenerPeliculas()).withSelfRel());
     }
 
     @GetMapping("/{id}")
-    public Pelicula obtenerPeliculaPorId(@PathVariable Long id) {
-        return peliculaService.obtenerPorId(id).orElse(null);
+    public EntityModel<Pelicula> obtenerPeliculaPorId(@PathVariable Long id) {
+
+        Pelicula pelicula = peliculaService.obtenerPorId(id).orElse(null);
+
+        if (pelicula == null) {
+            return null;
+        }
+
+        return EntityModel.of(pelicula,
+                linkTo(methodOn(PeliculaController.class).obtenerPeliculaPorId(id)).withSelfRel(),
+                linkTo(methodOn(PeliculaController.class).obtenerPeliculas()).withRel("peliculas"));
     }
 
     @PostMapping
